@@ -291,6 +291,7 @@ class EndomondoService(ServiceBase):
                     activity.Type = self._activityMappings[int(act["sport"])]
 
                 activity.ServiceData = {"ActivityID": act["id"], "ActivityData": cachedTrackData}
+                activity.ServiceKey = act["id"]
                 activity.CalculateUID()
                 activities.append(activity)
 
