@@ -410,6 +410,11 @@ class FITIO:
 			"serial_number": 0,
 			"product": 15706
 		}
+		devInfo = {
+			"manufacturer": FITManufacturer.DEVELOPMENT,
+			"product": 15706,
+			"device_index": 0
+		}
 		if act.Device:
 			# GC can get along with out this, Strava needs it
 			devId = DeviceIdentifier.FindEquivalentIdentifierOfType(DeviceIdentifierType.FIT, act.Device.Identifier)
@@ -418,10 +423,21 @@ class FITIO:
 					"manufacturer": devId.Manufacturer,
 					"product": devId.Product,
 				}
+				devInfo = {
+					"manufacturer": devId.Manufacturer,
+					"product": devId.Product,
+					"device_index": 0 # Required for GC
+				}
 				if act.Device.Serial:
 					creatorInfo["serial_number"] = int(act.Device.Serial) # I suppose some devices might eventually have alphanumeric serial #s
+					devInfo["serial_number"] = int(act.Device.Serial)
+				if act.Device.VersionMajor is not None:
+					assert act.Device.VersionMinor is not None
+					devInfo["software_version"] = act.Device.VersionMajor + act.Device.VersionMinor / 100
 
-		fmg.GenerateMessage("file_id", type=FITFileType.Activity, time_created=datetime.utcnow(), **creatorInfo)
+		fmg.GenerateMessage("file_id", type=FITFileType.Activity, time_created=toUtc(act.StartTime), **creatorInfo)
+		fmg.GenerateMessage("device_info", **devInfo)
+
 		sport = FITIO._sportMap[act.Type] if act.Type in FITIO._sportMap else 0
 		subSport = FITIO._subSportMap[act.Type] if act.Type in FITIO._subSportMap else 0
 
@@ -435,7 +451,7 @@ class FITIO:
 		def _resolveRunCadence(bikeCad, runCad):
 			nonlocal use_run_cadence
 			if use_run_cadence:
-				return runCad/2 if runCad is not None else (bikeCad/2 if bikeCad is not None else None)
+				return runCad if runCad is not None else (bikeCad if bikeCad is not None else None)
 			else:
 				return bikeCad
 
@@ -443,8 +459,8 @@ class FITIO:
 			if value is not None:
 				dict[key] = value
 
-		_mapStat(session_stats, "total_moving_time", act.Stats.MovingTime.Value)
-		_mapStat(session_stats, "total_timer_time", act.Stats.TimerTime.Value)
+		_mapStat(session_stats, "total_moving_time", act.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value)
+		_mapStat(session_stats, "total_timer_time", act.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value)
 		_mapStat(session_stats, "total_distance", act.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
 		_mapStat(session_stats, "total_calories", act.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value)
 		_mapStat(session_stats, "avg_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
@@ -499,8 +515,8 @@ class FITIO:
 			# But seriously, I'm betting that, some time down the road, a stat will pop up in X but not in Y, so I won't feel so bad about the C&P abuse
 			lap_stats = {}
 			_mapStat(lap_stats, "total_elapsed_time", lap.EndTime - lap.StartTime)
-			_mapStat(lap_stats, "total_moving_time", lap.Stats.MovingTime.Value)
-			_mapStat(lap_stats, "total_timer_time", lap.Stats.TimerTime.Value)
+			_mapStat(lap_stats, "total_moving_time", lap.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value)
+			_mapStat(lap_stats, "total_timer_time", lap.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value)
 			_mapStat(lap_stats, "total_distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
 			_mapStat(lap_stats, "total_calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value)
 			_mapStat(lap_stats, "avg_speed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
@@ -544,21 +560,6 @@ class FITIO:
 		# These need to be at the end for Strava
 		fmg.GenerateMessage("session", timestamp=toUtc(act.EndTime), start_time=toUtc(act.StartTime), sport=sport, sub_sport=subSport, event=FITEvent.Timer, event_type=FITEventType.Start, **session_stats)
 		fmg.GenerateMessage("activity", timestamp=toUtc(act.EndTime), local_timestamp=act.EndTime.replace(tzinfo=None), num_sessions=1, type=FITActivityType.GENERIC, event=FITEvent.Activity, event_type=FITEventType.Stop)
-
-		if act.Device:
-			devId = DeviceIdentifier.FindEquivalentIdentifierOfType(DeviceIdentifierType.FIT, act.Device.Identifier)
-			if devId:
-				devInfo = {
-					"manufacturer": devId.Manufacturer,
-					"product": devId.Product,
-					"device_index": 0 # Required for GC
-				}
-				if act.Device.Serial:
-					devInfo["serial_number"] = int(act.Device.Serial) # I suppose some devices might eventually have alphanumeric serial #s
-				if act.Device.VersionMajor is not None:
-					assert act.Device.VersionMinor is not None
-					devInfo["software_version"] = act.Device.VersionMajor + act.Device.VersionMinor / 100
-				fmg.GenerateMessage("device_info", **devInfo)
 
 		records = fmg.GetResult()
 		header = FITIO._generateHeader(len(records))

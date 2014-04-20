@@ -69,9 +69,9 @@ class TCXIO:
             totalTimeEL = xlap.find("tcx:TotalTimeSeconds", namespaces=ns)
             if totalTimeEL is None:
                 raise ValueError("Missing lap TotalTimeSeconds")
-            lap.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, timedelta(seconds=float(totalTimeEL.text)))
+            lap.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Seconds, float(totalTimeEL.text))
 
-            lap.EndTime = lap.StartTime + lap.Stats.TimerTime.Value
+            lap.EndTime = lap.StartTime + timedelta(seconds=float(totalTimeEL.text))
 
             distEl = xlap.find("tcx:DistanceMeters", namespaces=ns)
             energyEl = xlap.find("tcx:Calories", namespaces=ns)
@@ -143,10 +143,10 @@ class TCXIO:
                         lap.Stats.Power.update(ActivityStatistic(ActivityStatisticUnit.Watts, avg=float(avgPowerEl.text)))
                     maxRunCadEl = lxEl.find("tpx:MaxRunCadence", namespaces=ns)
                     if maxRunCadEl is not None:
-                        lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, max=float(maxRunCadEl.text) * 2))
+                        lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, max=float(maxRunCadEl.text)))
                     avgRunCadEl = lxEl.find("tpx:AvgRunCadence", namespaces=ns)
                     if avgRunCadEl is not None:
-                        lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, avg=float(avgRunCadEl.text) * 2))
+                        lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, avg=float(avgRunCadEl.text)))
                     stepsEl = lxEl.find("tpx:Steps", namespaces=ns)
                     if stepsEl is not None:
                         lap.Stats.Strides.update(ActivityStatistic(ActivityStatisticUnit.Strides, value=float(stepsEl.text)))
@@ -272,7 +272,7 @@ class TCXIO:
 
             xlap.attrib["StartTime"] = lap.StartTime.astimezone(UTC).strftime(dateFormat)
 
-            _writeStat(xlap, "TotalTimeSeconds", lap.Stats.TimerTime.Value.total_seconds() if lap.Stats.TimerTime.Value else None, default=(lap.EndTime - lap.StartTime).total_seconds())
+            _writeStat(xlap, "TotalTimeSeconds", lap.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value if lap.Stats.TimerTime.Value else None, default=(lap.EndTime - lap.StartTime).total_seconds())
             _writeStat(xlap, "DistanceMeters", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
             _writeStat(xlap, "MaximumSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
             _writeStat(xlap, "Calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value, default=0, naturalValue=True)
@@ -301,8 +301,8 @@ class TCXIO:
                 lapext.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
                 _writeStat(lapext, "MaxBikeCadence", lap.Stats.Cadence.Max, naturalValue=True)
                 # This dividing-by-two stuff is getting silly
-                _writeStat(lapext, "MaxRunCadence", lap.Stats.RunCadence.Max/2 if lap.Stats.RunCadence.Max is not None else None, naturalValue=True)
-                _writeStat(lapext, "AvgRunCadence", lap.Stats.RunCadence.Average/2 if lap.Stats.RunCadence.Average is not None else None, naturalValue=True)
+                _writeStat(lapext, "MaxRunCadence", lap.Stats.RunCadence.Max if lap.Stats.RunCadence.Max is not None else None, naturalValue=True)
+                _writeStat(lapext, "AvgRunCadence", lap.Stats.RunCadence.Average if lap.Stats.RunCadence.Average is not None else None, naturalValue=True)
                 _writeStat(lapext, "Steps", lap.Stats.Strides.Value, naturalValue=True)
                 _writeStat(lapext, "MaxWatts", lap.Stats.Power.asUnits(ActivityStatisticUnit.Watts).Max, naturalValue=True)
                 _writeStat(lapext, "AvgWatts", lap.Stats.Power.asUnits(ActivityStatisticUnit.Watts).Average, naturalValue=True)
