@@ -236,8 +236,8 @@ class SynchronizationTask:
                 "Distance": x.Distance,
                 "UIDs": list(x.UIDs),
                 "Prescence": _activityPrescences(x.PresentOnServices),
-                "Abscence": _activityPrescences(x.NotPresentOnServices)
-
+                "Abscence": _activityPrescences(x.NotPresentOnServices),
+                "ServiceKeys": x.ServiceKeys
             }
             for x in self._activityRecords
         ]
@@ -869,13 +869,7 @@ class SynchronizationTask:
                             if uploaded_external_id:
                                 # record external ID, for posterity (and later debugging)
                                 db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID, "Timestamp": datetime.utcnow()})
-
-                                if not hasattr(act, "ServiceDataCollection"):
-                                    act.ServiceDataCollection = {}
-                                act.ServiceDataCollection[destSvc.ID] = { "ID" : uploaded_external_id } 
-                                if not hasattr(act, "ServiceKeyCollection"):
-                                    act.ServiceKeyCollection = {}
-                                act.ServiceKeyCollection[destinationSvcRecord._id] = uploaded_external_id 
+                                activity.ServiceKeyCollection[destinationSvcRecord._id] = uploaded_external_id 
                             # flag as successful
                             db.connections.update({"_id": destinationSvcRecord._id},
                                                   {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}})
