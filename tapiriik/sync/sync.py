@@ -237,7 +237,7 @@ class SynchronizationTask:
                 "UIDs": list(x.UIDs),
                 "Prescence": _activityPrescences(x.PresentOnServices),
                 "Abscence": _activityPrescences(x.NotPresentOnServices),
-                "ServiceKeys": x.ServiceKeys
+                "ServiceKeyCollection": x.ServiceKeyCollection
             }
             for x in self._activityRecords
         ]
@@ -349,7 +349,7 @@ class SynchronizationTask:
             if not hasattr(act, "ServiceKeyCollection"):
                 act.ServiceKeyCollection = {}
             if hasattr(act, "ServiceKey") and act.ServiceKey is not None:
-                act.ServiceKeyCollection[conn._id] = act.ServiceKey
+                act.ServiceKeyCollection[conn.Service.ID] = act.ServiceKey
                 del act.ServiceKey
             if act.TZ and not hasattr(act.TZ, "localize"):
                 raise ValueError("Got activity with TZ type " + str(type(act.TZ)) + " instead of a pytz timezone")
@@ -422,7 +422,7 @@ class SynchronizationTask:
                 existingActivity.Stats.coalesceWith(act.Stats)
 
                 if conn._id in existingActivity.ServiceKeyCollection:
-                    logger.info("\t\t AAAAHHH dup activity within source " + conn.Service.ID + " act1 " + existingActivity.ServiceKeyCollection[conn._id] + " act2 " + act.ServiceKeyCollection[conn._id])
+                    logger.info("\t\t AAAAHHH dup activity within source " + conn.Service.ID + " act1 " + existingActivity.ServiceKeyCollection[conn.Service.ID] + " act2 " + act.ServiceKeyCollection[conn.Service.ID])
 
                 serviceDataCollection = dict(act.ServiceDataCollection)
                 serviceDataCollection.update(existingActivity.ServiceDataCollection)
@@ -752,6 +752,7 @@ class SynchronizationTask:
                 for activity in self._activities:
                     logger.info(str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
                     logger.info(" Name: %s Notes: %s Distance: %s%s" % (activity.Name[:15] if activity.Name else "", activity.Notes[:15] if activity.Notes else "", activity.Stats.Distance.Value, activity.Stats.Distance.Units))
+                    logger.info(" ServiceKeys : " + str(activity.ServiceKeyCollection))
                     try:
                         activity.Record = self._findOrCreateActivityRecord(activity) # Make it a member of the activity, to avoid passing it around as a seperate parameter everywhere.
 
@@ -869,7 +870,7 @@ class SynchronizationTask:
                             if uploaded_external_id:
                                 # record external ID, for posterity (and later debugging)
                                 db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID, "Timestamp": datetime.utcnow()})
-                                activity.ServiceKeyCollection[destinationSvcRecord._id] = uploaded_external_id 
+                                activity.ServiceKeyCollection[destinationSvcRecord.Service.Id] = uploaded_external_id 
                             # flag as successful
                             db.connections.update({"_id": destinationSvcRecord._id},
                                                   {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}})
