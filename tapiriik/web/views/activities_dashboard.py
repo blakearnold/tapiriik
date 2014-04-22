@@ -14,6 +14,12 @@ def activities_fetch_json(req):
     if not req.user:
         return HttpResponse(status=403)
 
+    url_map = {
+        "garminconnect": (lambda serviceKey: "http://connect.garmin.com/activity/%s" % serviceKey),
+        "strava": (lambda serviceKey: "http://app.strava.com/activities/%s" % serviceKey),
+        "runkeeper": (lambda serviceKey: "http://runkeeper.com/user/blakearnold/activity/%s" % serviceKey.split("/")[2])
+    }
+
     retrieve_fields = [
         "Activities.Prescence",
         "Activities.Abscence",
@@ -41,7 +47,7 @@ def activities_fetch_json(req):
         activity["Prescence"].update(activity["Abscence"])
         for svc, serviceKey in activity["ServiceKeyCollection"].items():
             if svc in activity["Prescence"]:
-                activity["Prescence"][svc]["ServiceKey"] = serviceKey
+                activity["Prescence"][svc]["url"] = url_map[svc](str(serviceKey)) if svc in url_map else str(serviceKey)
         for svc in WITHDRAWN_SERVICES:
             if svc in activity["Prescence"]:
                 del activity["Prescence"][svc]

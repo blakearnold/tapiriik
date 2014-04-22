@@ -845,7 +845,6 @@ class SynchronizationTask:
                             logger.debug("\tDetermined TZ %s" % full_activity.TZ)
 
                         activity.Record.SetActivity(activity) # Update with whatever more accurate information we may have.
-
                         full_activity.Record = activity.Record # Some services don't return the same object, so this gets lost, which is meh, but...
 
                         for destinationSvcRecord in eligibleServices:
@@ -870,7 +869,7 @@ class SynchronizationTask:
                             if uploaded_external_id:
                                 # record external ID, for posterity (and later debugging)
                                 db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID, "Timestamp": datetime.utcnow()})
-                                activity.ServiceKeyCollection[destinationSvcRecord.Service.ID] = uploaded_external_id 
+                                activity.Record.ServiceKeyCollection[destinationSvcRecord.Service.ID] = uploaded_external_id
                             # flag as successful
                             db.connections.update({"_id": destinationSvcRecord._id},
                                                   {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}})
