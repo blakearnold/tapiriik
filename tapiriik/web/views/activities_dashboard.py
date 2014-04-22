@@ -22,7 +22,8 @@ def activities_fetch_json(req):
         "Activities.StartTime",
         "Activities.EndTime",
         "Activities.Private",
-        "Activities.Stationary"
+        "Activities.Stationary",
+        "Activities.ServiceKeyCollection",
     ]
     activityRecords = db.activity_records.find_one({"UserID": req.user["_id"]}, dict([(x, 1) for x in retrieve_fields]))
     if not activityRecords:
@@ -38,6 +39,9 @@ def activities_fetch_json(req):
                 del activity["Abscence"][abscence]["Exception"]["ClearGroup"]
         # Don't really need these seperate at this point
         activity["Prescence"].update(activity["Abscence"])
+        for svc, serviceKey in activity["ServiceKeyCollection"].items():
+            if svc in activity["Prescence"]:
+                activity["Prescence"][svc]["ServiceKey"] = serviceKey
         for svc in WITHDRAWN_SERVICES:
             if svc in activity["Prescence"]:
                 del activity["Prescence"][svc]

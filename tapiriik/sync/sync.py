@@ -870,7 +870,7 @@ class SynchronizationTask:
                             if uploaded_external_id:
                                 # record external ID, for posterity (and later debugging)
                                 db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID, "Timestamp": datetime.utcnow()})
-                                activity.ServiceKeyCollection[destinationSvcRecord.Service.Id] = uploaded_external_id 
+                                activity.ServiceKeyCollection[destinationSvcRecord.Service.ID] = uploaded_external_id 
                             # flag as successful
                             db.connections.update({"_id": destinationSvcRecord._id},
                                                   {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}})
